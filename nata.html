@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistema de Control</title>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; overflow: hidden; background: #f0f2f5; }
+        .main { display: flex; height: 100vh; }
+        
+        /* Contaduría Izquierda */
+        #cnt { flex: 1; padding: 25px; overflow-y: auto; background: white; border-right: 2px solid #ddd; }
+        
+        /* Visor Derecha */
+        #vis { width: 360px; height: 100%; background: #eee; }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        /* Componentes */
+        .box-tasa { background: #002d57; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .val-tasa { font-size: 1.5em; font-weight: bold; cursor: pointer; }
+        
+        .form { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        input, select, button { padding: 12px; border: 1px solid #ccc; border-radius: 6px; outline: none; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-size: 0.9em; color: #666; }
+        
+        .total { margin-top: 30px; padding: 20px; border-radius: 8px; background: #f1f3f5; font-size: 1.2em; border-left: 6px solid #002d57; }
+        .up { color: #28a745; font-weight: bold; }
+        .down { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="main">
+    
+    <!-- LADO CONTABLE -->
+    <div id="cnt">
+        <div class="box-tasa">
+            <span>Tasa BCV USD/VES</span>
+            <div id="tasa-num" class="val-tasa" onclick="fijarTasa()">0.00</div>
+        </div>
+
+        <div class="form">
+            <input type="text" id="des" placeholder="Descripción" style="flex:2">
+            <input type="number" id="mon" placeholder="Monto $" style="flex:1">
+            <select id="tip">
+                <option value="1">Ingreso (+)</option>
+                <option value="0">Egreso (-)</option>
+            </select>
+            <button onclick="reg()">Registrar</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Detalle</th>
+                    <th>USD</th>
+                    <th>Bolívares</th>
+                </tr>
+            </thead>
+            <tbody id="filas"></tbody>
+        </table>
+
+        <div class="total">
+            Balance: <span id="t-usd">$0.00</span><br>
+            <small style="color: #555;">Estimado: <span id="t-ves">Bs. 0.00</span></small>
+        </div>
+    </div>
+
+    <!-- LADO WEB -->
+    <div id="vis">
+        <iframe src="https://alcambio.app"></iframe>
+    </div>
+
+</div>
+
+<script>
+    let t = 0;
+    let b = 0;
+
+    // Intento de carga automática con manejo de errores
+    async function load() {
+        const el = document.getElementById('tasa-num');
+        try {
+            const r = await fetch('https://ve.dolarapi.com');
+            if(!r.ok) throw new Error();
+            const d = await r.json();
+            t = d.promedio;
+            el.innerText = t.toFixed(2);
+        } catch (e) {
+            el.innerText = "CLIC AQUÍ";
+            el.style.color = "#ffeb3b";
+        }
+    }
+
+    // Opción manual si el navegador bloquea la API
+    function fijarTasa() {
+        let n = prompt("Ingresa la tasa actual que ves en la pantalla derecha:");
+        if (n) {
+            t = parseFloat(n.replace(',', '.'));
+            document.getElementById('tasa-num').innerText = t.toFixed(2);
+            document.getElementById('tasa-num').style.color = "white";
+        }
+    }
+
+    function reg() {
+        const d = document.getElementById('des').value;
+        const m = parseFloat(document.getElementById('mon').value);
+        const s = document.getElementById('tip').value;
+
+        if (!d || isNaN(m) || t === 0) return alert("Ingresa la tasa y los datos correctamente.");
+
+        const v = s == "1" ? m : -m;
+        const ves = v * t;
+        b += v;
+
+        const row = `<tr>
+            <td>${d}</td>
+            <td class="${s == '1' ? 'up' : 'down'}">${v.toFixed(2)}</td>
+            <td>${ves.toFixed(2)}</td>
+        </tr>`;
+        
+        document.getElementById('filas').insertAdjacentHTML('beforeend', row);
+        document.getElementById('t-usd').innerText = "$" + b.toFixed(2);
+        document.getElementById('t-usd').className = b >= 0 ? 'up' : 'down';
+        document.getElementById('t-ves').innerText = "Bs. " + (b * t).toFixed(2);
+
+        document.getElementById('des').value = '';
+        document.getElementById('mon').value = '';
+    }
+
+    load();
+</script>
+
+</body>
+</html>
