@@ -2,18 +2,18 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Sistema Contable</title>
+    <title>Panel Contable</title>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; overflow: hidden; background: #fff; }
         .main { display: flex; height: 100vh; width: 100%; }
         #left { flex: 1; padding: 20px; overflow-y: auto; border-right: 1px solid #ccc; }
-        #right { width: 380px; height: 100%; }
+        #right { width: 380px; height: 100%; background: #eee; }
         iframe { width: 100%; height: 100%; border: none; }
         .tasa-box { background: #003366; color: white; padding: 15px; border-radius: 4px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
         .tasa-val { font-size: 1.5em; font-weight: bold; }
         .f-row { display: flex; gap: 10px; margin-bottom: 20px; }
         input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        button { background: #007bff; color: white; border: none; cursor: pointer; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
         .res { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #003366; }
@@ -25,7 +25,7 @@
 <div class="main">
     <div id="left">
         <div class="tasa-box">
-            <span>Dólar BCV Oficial</span>
+            <span>BCV Oficial</span>
             <div id="rate-txt" class="tasa-val">Cargando...</div>
         </div>
         <div class="f-row">
@@ -55,14 +55,25 @@
     let balance = 0;
 
     async function getRate() {
+        // Usamos un proxy para saltar el bloqueo de GitHub
+        const url = 'https://api.allorigins.win' + encodeURIComponent('https://ve.dolarapi.com');
+        
         try {
-            // Se usa HTTPS para evitar bloqueos en GitHub Pages
-            const r = await fetch('https://ve.dolarapi.com');
+            const r = await fetch(url);
             const d = await r.json();
-            rate = d.promedio;
+            const data = JSON.parse(d.contents);
+            rate = data.promedio;
             document.getElementById('rate-txt').innerText = rate.toFixed(2) + " Bs.";
         } catch (e) {
-            document.getElementById('rate-txt').innerText = "Error de red";
+            // Si falla el proxy, intentamos directo como respaldo
+            try {
+                const r2 = await fetch('https://ve.dolarapi.com');
+                const d2 = await r2.json();
+                rate = d2.promedio;
+                document.getElementById('rate-txt').innerText = rate.toFixed(2) + " Bs.";
+            } catch (e2) {
+                document.getElementById('rate-txt').innerText = "Error de conexión";
+            }
         }
     }
 
@@ -86,8 +97,7 @@
     }
 
     getRate();
-    // Actualiza la tasa cada 10 minutos automáticamente
-    setInterval(getRate, 600000);
+    setInterval(getRate, 300000); // Actualiza cada 5 min
 </script>
 </body>
 </html>
