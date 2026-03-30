@@ -2,21 +2,21 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Panel Contable</title>
+    <title>Control Contable</title>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; overflow: hidden; background: #fff; }
         .main { display: flex; height: 100vh; width: 100%; }
         #left { flex: 1; padding: 20px; overflow-y: auto; border-right: 1px solid #ccc; }
-        #right { width: 380px; height: 100%; background: #eee; }
+        #right { width: 380px; height: 100%; background: #f0f0f0; }
         iframe { width: 100%; height: 100%; border: none; }
-        .tasa-box { background: #003366; color: white; padding: 15px; border-radius: 4px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .tasa-val { font-size: 1.5em; font-weight: bold; }
+        .tasa-box { background: #004085; color: white; padding: 15px; border-radius: 4px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .tasa-val { font-size: 1.5em; font-weight: bold; cursor: pointer; }
         .f-row { display: flex; gap: 10px; margin-bottom: 20px; }
         input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
         button { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
-        .res { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #003366; }
+        .res { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #004085; }
         .up { color: green; font-weight: bold; }
         .down { color: red; font-weight: bold; }
     </style>
@@ -25,8 +25,8 @@
 <div class="main">
     <div id="left">
         <div class="tasa-box">
-            <span>BCV Oficial</span>
-            <div id="rate-txt" class="tasa-val">Cargando...</div>
+            <span>Dólar BCV</span>
+            <div id="rate-txt" class="tasa-val" onclick="manual()">Cargando...</div>
         </div>
         <div class="f-row">
             <input type="text" id="desc" placeholder="Concepto">
@@ -50,30 +50,31 @@
         <iframe src="https://alcambio.app"></iframe>
     </div>
 </div>
+
 <script>
     let rate = 0;
     let balance = 0;
 
-    async function getRate() {
-        // Usamos un proxy para saltar el bloqueo de GitHub
-        const url = 'https://api.allorigins.win' + encodeURIComponent('https://ve.dolarapi.com');
-        
-        try {
-            const r = await fetch(url);
-            const d = await r.json();
-            const data = JSON.parse(d.contents);
+    // Función de carga con API directa de respaldo
+    function getRate() {
+        fetch('https://ve.dolarapi.com')
+        .then(response => response.json())
+        .then(data => {
             rate = data.promedio;
-            document.getElementById('rate-txt').innerText = rate.toFixed(2) + " Bs.";
-        } catch (e) {
-            // Si falla el proxy, intentamos directo como respaldo
-            try {
-                const r2 = await fetch('https://ve.dolarapi.com');
-                const d2 = await r2.json();
-                rate = d2.promedio;
-                document.getElementById('rate-txt').innerText = rate.toFixed(2) + " Bs.";
-            } catch (e2) {
-                document.getElementById('rate-txt').innerText = "Error de conexión";
-            }
+            document.getElementById('rate-txt').innerText = rate.toFixed(2);
+        })
+        .catch(err => {
+            document.getElementById('rate-txt').innerText = "CLIC PARA TASA";
+            document.getElementById('rate-txt').style.color = "#ffc107";
+        });
+    }
+
+    function manual() {
+        let val = prompt("Ingresa la tasa BCV que ves a la derecha:");
+        if(val) {
+            rate = parseFloat(val.replace(',', '.'));
+            document.getElementById('rate-txt').innerText = rate.toFixed(2);
+            document.getElementById('rate-txt').style.color = "white";
         }
     }
 
@@ -81,12 +82,12 @@
         const d = document.getElementById('desc').value;
         const a = parseFloat(document.getElementById('amt').value);
         const o = document.getElementById('op').value;
-        if (!d || isNaN(a) || rate === 0) return;
+        if (!d || isNaN(a) || rate === 0) return alert("Ingresa la tasa primero (clic en el recuadro azul si está vacío)");
 
-        const val = o == "1" ? a : -a;
-        balance += val;
+        const valUsd = o == "1" ? a : -a;
+        balance += valUsd;
 
-        const row = `<tr><td>${d}</td><td class="${o == '1' ? 'up':'down'}">${val.toFixed(2)}</td><td>${(val * rate).toFixed(2)}</td></tr>`;
+        const row = `<tr><td>${d}</td><td class="${o == '1' ? 'up':'down'}">${valUsd.toFixed(2)}</td><td>${(valUsd * rate).toFixed(2)}</td></tr>`;
         document.getElementById('logs').innerHTML += row;
         document.getElementById('tot-u').innerText = "$" + balance.toFixed(2);
         document.getElementById('tot-u').className = balance >= 0 ? 'up' : 'down';
@@ -96,8 +97,7 @@
         document.getElementById('amt').value = '';
     }
 
-    getRate();
-    setInterval(getRate, 300000); // Actualiza cada 5 min
+    window.onload = getRate;
 </script>
 </body>
 </html>
