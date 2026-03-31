@@ -6,41 +6,19 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; background: #fff; }
         .main { display: flex; height: 100vh; width: 100%; }
-        
         #left { flex: 1; padding: 20px; overflow-y: auto; border-right: 1px solid #ccc; }
         #right { width: 380px; height: 100%; background: #f0f0f0; }
         iframe { width: 100%; height: 100%; border: none; }
-
-        .tasa-box { 
-            background: #004085; 
-            color: white; 
-            padding: 15px; 
-            border-radius: 4px; 
-            margin-bottom: 20px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-        }
+        .tasa-box { background: #004085; color: white; padding: 15px; border-radius: 4px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
         .tasa-val { font-size: 1.6em; font-weight: bold; cursor: pointer; }
         .small-info { font-size: 0.8em; opacity: 0.8; display: block; }
-
         .f-row { display: flex; gap: 10px; margin-bottom: 20px; }
         input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
         button { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
-        
         table { width: 100%; border-collapse: collapse; }
         th { background: #f8f9fa; }
         th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
-        
-        .res { 
-            margin-top: 20px; 
-            padding: 15px; 
-            background: #f8f9fa; 
-            border-radius: 4px; 
-            border-left: 4px solid #004085;
-            font-size: 1.1em;
-        }
-        
+        .res { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #004085; font-size: 1.1em; }
         .up { color: #28a745; font-weight: bold; }
         .down { color: #dc3545; font-weight: bold; }
     </style>
@@ -52,7 +30,7 @@
         <div class="tasa-box">
             <div>
                 <span>Dólar BCV</span>
-                <span class="small-info" id="fecha-txt">Cargando...</span>
+                <span class="small-info" id="status-txt">Iniciando...</span>
             </div>
             <div id="rate-txt" class="tasa-val" onclick="manual()">0.00</div>
         </div>
@@ -93,28 +71,29 @@
     let rate = 0;
     let balance = 0;
 
-    function updateRate() {
+    function fetchRate() {
+        document.getElementById('status-txt').innerText = "Actualizando...";
+        
         fetch('https://ve.dolarapi.com/v1/dolares/oficial')
         .then(res => res.json())
         .then(data => {
             rate = data.promedio;
             document.getElementById('rate-txt').innerText = rate.toFixed(2);
-            const ahora = new Date();
-            document.getElementById('fecha-txt').innerText = "Refresco: " + ahora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            refreshUI();
+            document.getElementById('status-txt').innerText = "Tasa al día";
+            updateDisplay();
         })
         .catch(() => {
-            document.getElementById('fecha-txt').innerText = "Error de red";
+            document.getElementById('status-txt').innerText = "Error de conexión";
         });
     }
 
     function manual() {
-        let val = prompt("Valor de tasa:");
+        let val = prompt("Valor manual:");
         if(val) {
             rate = parseFloat(val.replace(',', '.'));
             document.getElementById('rate-txt').innerText = rate.toFixed(2);
-            document.getElementById('fecha-txt').innerText = "Manual";
-            refreshUI();
+            document.getElementById('status-txt').innerText = "Modo manual";
+            updateDisplay();
         }
     }
 
@@ -135,21 +114,22 @@
         </tr>`;
         
         document.getElementById('logs').innerHTML = row + document.getElementById('logs').innerHTML;
-        refreshUI();
+        updateDisplay();
 
         document.getElementById('desc').value = '';
         document.getElementById('amt').value = '';
     }
 
-    function refreshUI() {
+    function updateDisplay() {
         document.getElementById('tot-u').innerText = (balance < 0 ? "-$" : "$") + Math.abs(balance).toFixed(2);
         document.getElementById('tot-u').className = balance >= 0 ? 'up' : 'down';
         document.getElementById('tot-b').innerText = (balance * rate).toLocaleString('es-VE', {minimumFractionDigits: 2});
     }
 
+    // Ejecución automática cada 5 minutos (300000ms)
     window.onload = () => {
-        updateRate();
-        setInterval(updateRate, 600000); // Cada 10 minutos
+        fetchRate(); 
+        setInterval(fetchRate, 300000); 
     };
 </script>
 
