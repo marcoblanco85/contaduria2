@@ -26,7 +26,7 @@
     <div id="left">
         <div class="tasa-box">
             <span>Dólar BCV</span>
-            <div id="rate-txt" class="tasa-val" onclick="manual()">473,87</div>
+            <div id="rate-txt" class="tasa-val" onclick="manual()">cargando...</div>
         </div>
         <div class="f-row">
             <input type="text" id="desc" placeholder="Concepto">
@@ -64,7 +64,7 @@
             document.getElementById('rate-txt').innerText = rate.toFixed(2);
         })
         .catch(err => {
-            document.getElementById('rate-txt').innerText = "CLIC PARA TASA";
+            document.getElementById('rate-txt').innerText = "473,87";
             document.getElementById('rate-txt').style.color = "#ffc107";
         });
     }
