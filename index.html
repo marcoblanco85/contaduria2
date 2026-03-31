@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Control Contable</title>
+    <title>Control Contable - Automatizado</title>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; overflow: hidden; background: #fff; }
         .main { display: flex; height: 100vh; width: 100%; }
@@ -19,13 +19,17 @@
         .res { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #004085; }
         .up { color: green; font-weight: bold; }
         .down { color: red; font-weight: bold; }
+        .small-info { font-size: 0.7em; opacity: 0.8; display: block; }
     </style>
 </head>
 <body>
 <div class="main">
     <div id="left">
         <div class="tasa-box">
-            <span>Dólar BCV</span>
+            <div>
+                <span>Dólar BCV</span>
+                <span class="small-info" id="fecha-txt">Sincronizando...</span>
+            </div>
             <div id="rate-txt" class="tasa-val" onclick="manual()">cargando...</div>
         </div>
         <div class="f-row">
@@ -55,26 +59,38 @@
     let rate = 0;
     let balance = 0;
 
-    // Función de carga con API directa de respaldo
+    // Función actualizada con el endpoint específico
     function getRate() {
-        fetch('https://ve.dolarapi.com')
-        .then(response => response.json())
+        fetch('https://ve.dolarapi.com/v1/dolares/oficial')
+        .then(response => {
+            if (!response.ok) throw new Error('Error en red');
+            return response.json();
+        })
         .then(data => {
+            // Dolar API usa el campo 'promedio' para el valor oficial
             rate = data.promedio;
             document.getElementById('rate-txt').innerText = rate.toFixed(2);
+            document.getElementById('rate-txt').style.color = "white";
+            
+            // Opcional: Mostrar fecha de actualización
+            const fecha = new Date(data.fechaActualizacion);
+            document.getElementById('fecha-txt').innerText = "Act: " + fecha.toLocaleDateString();
         })
         .catch(err => {
-            document.getElementById('rate-txt').innerText = "473,87";
+            console.error("Error API:", err);
+            document.getElementById('rate-txt').innerText = "ERROR API";
             document.getElementById('rate-txt').style.color = "#ffc107";
+            alert("No se pudo obtener la tasa automáticamente. Haz clic en el recuadro azul para ingresarla manualmente.");
         });
     }
 
     function manual() {
-        let val = prompt("Ingresa la tasa BCV que ves a la derecha:");
+        let val = prompt("Ingresa la tasa manualmente:");
         if(val) {
             rate = parseFloat(val.replace(',', '.'));
             document.getElementById('rate-txt').innerText = rate.toFixed(2);
             document.getElementById('rate-txt').style.color = "white";
+            document.getElementById('fecha-txt').innerText = "Manual";
         }
     }
 
@@ -82,16 +98,23 @@
         const d = document.getElementById('desc').value;
         const a = parseFloat(document.getElementById('amt').value);
         const o = document.getElementById('op').value;
-        if (!d || isNaN(a) || rate === 0) return alert("Ingresa la tasa primero (clic en el recuadro azul si está vacío)");
+        
+        if (!d || isNaN(a)) return alert("Completa el concepto y el monto");
+        if (rate === 0) return alert("Espera a que cargue la tasa o ingrésala manualmente");
 
         const valUsd = o == "1" ? a : -a;
         balance += valUsd;
 
-        const row = `<tr><td>${d}</td><td class="${o == '1' ? 'up':'down'}">${valUsd.toFixed(2)}</td><td>${(valUsd * rate).toFixed(2)}</td></tr>`;
+        const row = `<tr>
+            <td>${d}</td>
+            <td class="${o == '1' ? 'up':'down'}">${valUsd.toFixed(2)}</td>
+            <td>${(valUsd * rate).toFixed(2)}</td>
+        </tr>`;
+        
         document.getElementById('logs').innerHTML += row;
         document.getElementById('tot-u').innerText = "$" + balance.toFixed(2);
         document.getElementById('tot-u').className = balance >= 0 ? 'up' : 'down';
-        document.getElementById('tot-b').innerText = (balance * rate).toFixed(2);
+        document.getElementById('tot-b').innerText = (balance * rate).toLocaleString('es-VE', {minimumFractionDigits: 2});
 
         document.getElementById('desc').value = '';
         document.getElementById('amt').value = '';
