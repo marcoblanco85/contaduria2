@@ -2,24 +2,21 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Control de Caja y Tasas</title>
+    <title>Control de Caja con Autoguardado</title>
     <style>
         body, html { margin: 0; padding: 0; min-height: 100%; font-family: 'Segoe UI', Arial, sans-serif; background: #fdfdfd; }
         .container { max-width: 800px; margin: 40px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        
         .tasa-box { background: #004085; color: white; padding: 20px; border-radius: 6px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
         .tasa-val { font-size: 2em; font-weight: bold; cursor: pointer; }
         .small-info { font-size: 0.85em; opacity: 0.8; display: block; }
-        
         .f-row { display: flex; gap: 10px; margin-bottom: 25px; }
         input, select, button { padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
         .btn-add { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
-        .btn-clear { background: #6c757d; color: white; border: none; cursor: pointer; font-size: 0.8em; margin-top: 10px; }
-        
+        .btn-clear { background: #dc3545; color: white; border: none; cursor: pointer; font-size: 0.8em; margin-top: 20px; padding: 8px; border-radius: 4px; opacity: 0.7; }
+        .btn-clear:hover { opacity: 1; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { background: #f4f6f8; color: #333; }
-        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
-        
+        th { background: #f4f6f8; color: #333; padding: 12px; border-bottom: 2px solid #ddd; text-align: left; }
+        td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
         .res { margin-top: 25px; padding: 20px; background: #f8f9fa; border-radius: 6px; border-left: 5px solid #004085; font-size: 1.2em; line-height: 1.6; }
         .up { color: #28a745; font-weight: bold; }
         .down { color: #dc3545; font-weight: bold; }
@@ -59,35 +56,34 @@
 
     <div class="res">
         <strong>Balance Total USD:</strong> <span id="tot-u">$0.00</span><br>
-        <strong>Equivalencia en Bolívares:</strong> <span id="tot-b">0,00</span>
+        <strong>Equivalencia en Bolívares:</strong> <span id="tot-b">0,00 Bs.</span>
     </div>
-    
-    <button class="btn-clear" onclick="resetData()">Limpiar toda la caja</button>
+
+    <button class="btn-clear" onclick="limpiarTodo()">Borrar todo el historial</button>
 </div>
 
 <script>
     let rate = 0;
     let balance = 0;
-    let transactions = [];
+    let registros = [];
 
-    // Cargar datos guardados al iniciar
-    function loadData() {
-        const savedTransactions = localStorage.getItem('caja_trans');
-        const savedBalance = localStorage.getItem('caja_balance');
-        
-        if (savedTransactions) {
-            transactions = JSON.parse(savedTransactions);
-            renderTable();
-        }
-        if (savedBalance) {
-            balance = parseFloat(savedBalance);
+    // 1. CARGAR DATOS AL INICIAR
+    function cargarDeAlmacen() {
+        const guardado = localStorage.getItem('miCajaDatos');
+        if (guardado) {
+            registros = JSON.parse(guardado);
+            recalcularBalance();
+            renderizarTabla();
         }
     }
 
-    // Guardar datos en el navegador
-    function saveData() {
-        localStorage.setItem('caja_trans', JSON.stringify(transactions));
-        localStorage.setItem('caja_balance', balance.toString());
+    // 2. GUARDAR DATOS
+    function guardarEnAlmacen() {
+        localStorage.setItem('miCajaDatos', JSON.stringify(registros));
+    }
+
+    function recalcularBalance() {
+        balance = registros.reduce((total, item) => total + item.montoUsd, 0);
     }
 
     function fetchRate() {
@@ -100,9 +96,7 @@
             document.getElementById('status-txt').innerText = "Tasa al día (BCV)";
             updateDisplay();
         })
-        .catch(() => {
-            document.getElementById('status-txt').innerText = "Error de conexión";
-        });
+        .catch(() => { document.getElementById('status-txt').innerText = "Sin conexión"; });
     }
 
     function manual() {
@@ -122,33 +116,33 @@
         
         if (!d || isNaN(a) || rate === 0) return;
 
-        const valUsd = o == "1" ? a : -a;
-        balance += valUsd;
-
-        // Guardar en el array de transacciones
-        const newTrans = {
-            desc: d,
-            usd: valUsd,
-            bs: (valUsd * rate)
+        const montoUsd = o == "1" ? a : -a;
+        
+        // Crear nuevo registro
+        const nuevoRegistro = {
+            concepto: d,
+            montoUsd: montoUsd,
+            fecha: new Date().toLocaleDateString()
         };
-        transactions.unshift(newTrans); // Añadir al principio
 
-        saveData();
-        renderTable();
+        registros.unshift(nuevoRegistro);
+        recalcularBalance();
+        guardarEnAlmacen();
+        renderizarTabla();
         updateDisplay();
 
         document.getElementById('desc').value = '';
         document.getElementById('amt').value = '';
     }
 
-    function renderTable() {
+    function renderizarTabla() {
         const tbody = document.getElementById('logs');
         tbody.innerHTML = '';
-        transactions.forEach(t => {
+        registros.forEach(r => {
             const row = `<tr>
-                <td>${t.desc}</td>
-                <td class="${t.usd >= 0 ? 'up' : 'down'}">${t.usd.toFixed(2)}</td>
-                <td>${t.bs.toLocaleString('es-VE', {minimumFractionDigits: 2})}</td>
+                <td>${r.concepto}</td>
+                <td class="${r.montoUsd >= 0 ? 'up' : 'down'}">${r.montoUsd.toFixed(2)}</td>
+                <td>${(r.montoUsd * rate).toLocaleString('es-VE', {minimumFractionDigits: 2})}</td>
             </tr>`;
             tbody.innerHTML += row;
         });
@@ -160,18 +154,18 @@
         document.getElementById('tot-b').innerText = (balance * rate).toLocaleString('es-VE', {minimumFractionDigits: 2}) + " Bs.";
     }
 
-    function resetData() {
-        if(confirm("¿Estás seguro de que quieres borrar todo el historial?")) {
-            localStorage.clear();
-            transactions = [];
+    function limpiarTodo() {
+        if(confirm("¿Seguro que quieres borrar todos los datos guardados?")) {
+            localStorage.removeItem('miCajaDatos');
+            registros = [];
             balance = 0;
-            renderTable();
+            renderizarTabla();
             updateDisplay();
         }
     }
 
     window.onload = () => {
-        loadData();
+        cargarDeAlmacen();
         fetchRate();
         setInterval(fetchRate, 300000);
     };
