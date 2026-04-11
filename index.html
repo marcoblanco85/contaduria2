@@ -4,44 +4,22 @@
     <meta charset="UTF-8">
     <title>Control de Caja y Tasas</title>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; background: #fff; }
-        .main { display: flex; height: 100vh; width: 100%; position: relative; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Arial, sans-serif; background: #fff; }
+        .main { padding: 20px; max-width: 900px; margin: 0 auto; }
         
-        /* Panel Izquierdo */
-        #left { flex: 1; padding: 20px; overflow-y: auto; border-right: 1px solid #ccc; transition: all 0.3s ease; }
-        
-        /* Panel Derecho (Minimizable) */
-        #right { width: 380px; height: 100%; background: #f0f0f0; position: relative; transition: all 0.3s ease; border-left: 1px solid #ccc; }
-        #right.minimized { width: 40px; overflow: hidden; }
-        
-        iframe { width: 380px; height: 100%; border: none; }
-
-        /* Botón para minimizar */
-        .toggle-btn {
-            position: absolute;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            background: #004085;
-            color: white;
-            border: none;
-            padding: 10px 5px;
-            cursor: pointer;
-            z-index: 10;
-            border-radius: 0 5px 5px 0;
-            font-weight: bold;
-        }
-
         /* Estilos de la Interfaz */
         .tasa-box { background: #004085; color: white; padding: 15px; border-radius: 4px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
         .tasa-val { font-size: 1.6em; font-weight: bold; cursor: pointer; }
         .small-info { font-size: 0.8em; opacity: 0.8; display: block; }
+        
         .f-row { display: flex; gap: 10px; margin-bottom: 20px; }
         input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        .btn-add { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+        .btn-add { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; flex-shrink: 0; }
+        
         table { width: 100%; border-collapse: collapse; }
         th { background: #f8f9fa; }
         th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+        
         .res { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #004085; font-size: 1.1em; }
         .up { color: #28a745; font-weight: bold; }
         .down { color: #dc3545; font-weight: bold; }
@@ -50,57 +28,44 @@
 <body>
 
 <div class="main">
-    <div id="left">
-        <div class="tasa-box">
-            <div>
-                <span>Dólar BCV</span>
-                <span class="small-info" id="status-txt">Iniciando...</span>
-            </div>
-            <div id="rate-txt" class="tasa-val" onclick="manual()">0.00</div>
+    <div class="tasa-box">
+        <div>
+            <span>Dólar BCV</span>
+            <span class="small-info" id="status-txt">Iniciando...</span>
         </div>
-
-        <div class="f-row">
-            <input type="text" id="desc" placeholder="Concepto" style="flex: 2;">
-            <input type="number" id="amt" placeholder="Monto $" style="flex: 1;">
-            <select id="op">
-                <option value="1">Ingreso (+)</option>
-                <option value="0">Egreso (-)</option>
-            </select>
-            <button class="btn-add" onclick="add()">Añadir</button>
-        </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Detalle</th>
-                    <th>USD</th>
-                    <th>Bs.</th>
-                </tr>
-            </thead>
-            <tbody id="logs"></tbody>
-        </table>
-
-        <div class="res">
-            Balance USD: <span id="tot-u">$0.00</span><br>
-            Equiv. Bs: <span id="tot-b">0,00</span>
-        </div>
+        <div id="rate-txt" class="tasa-val" onclick="manual()">0.00</div>
     </div>
 
-    <div id="right">
-        <button class="toggle-btn" onclick="toggleMonitor()">&#8644;</button>
-        <iframe src="https://alcambio.app"></iframe>
+    <div class="f-row">
+        <input type="text" id="desc" placeholder="Concepto" style="flex: 2;">
+        <input type="number" id="amt" placeholder="Monto $" style="flex: 1;">
+        <select id="op">
+            <option value="1">Ingreso (+)</option>
+            <option value="0">Egreso (-)</option>
+        </select>
+        <button class="btn-add" onclick="add()">Añadir</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Detalle</th>
+                <th>USD</th>
+                <th>Bs.</th>
+            </tr>
+        </thead>
+        <tbody id="logs"></tbody>
+    </table>
+
+    <div class="res">
+        Balance USD: <span id="tot-u">$0.00</span><br>
+        Equiv. Bs: <span id="tot-b">0,00</span>
     </div>
 </div>
 
 <script>
     let rate = 0;
     let balance = 0;
-
-    // Minimizar / Maximizar Monitor
-    function toggleMonitor() {
-        const rightPanel = document.getElementById('right');
-        rightPanel.classList.toggle('minimized');
-    }
 
     // Obtención de tasa (Cada 5 min)
     function fetchRate() {
@@ -118,6 +83,7 @@
         });
     }
 
+    // Cambio manual de tasa
     function manual() {
         let val = prompt("Valor manual:");
         if(val) {
@@ -128,6 +94,7 @@
         }
     }
 
+    // Añadir transacción
     function add() {
         const d = document.getElementById('desc').value;
         const a = parseFloat(document.getElementById('amt').value);
@@ -151,6 +118,7 @@
         document.getElementById('amt').value = '';
     }
 
+    // Actualizar totales en pantalla
     function updateDisplay() {
         document.getElementById('tot-u').innerText = (balance < 0 ? "-$" : "$") + Math.abs(balance).toFixed(2);
         document.getElementById('tot-u').className = balance >= 0 ? 'up' : 'down';
